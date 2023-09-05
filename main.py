@@ -5,14 +5,15 @@ from serpapi import GoogleSearch
 # pip install uule-grabber
 import requests, uule_grabber, sqlite3, os, re, lxml, json
 import pandas as pd
+#import pymorphy2
 from Constants import LOCATIONS
 
 
-SERP_API = '<<YOUR_SERPAPI_TOKEN_HERE>>'
+SERP_API = '<<YOUR_SERP_API_TOKEN HERE>>'
 
 def sql_manipulation():
     """
-    This function is made to change your database if you've send some wrong data
+    This function is made to change your database if you've sent some wrong data
     :return:
     """
     con = sqlite3.connect("database_results.db")
@@ -44,7 +45,7 @@ def scrap_ads_get(keyword='buy'):
     params = {
         "q": keyword,
         "hl": "en",
-        "gl": "us"
+        "gl": "au"
     }
 
     headers = {
@@ -60,9 +61,12 @@ def scrap_ads_get(keyword='buy'):
         title = ad_result.select_one(".v0nnCb span").text
         website_link = ad_result.select_one("a.sVXRqc")["data-pcu"]
         ad_link = ad_result.select_one("a.sVXRqc")["href"]
-        displayed_link = ad_result.select_one(".qzEoUe").text
+        if ad_result.select_one(".ob9lvb").text:
+            displayed_link = ad_result.select_one(".ob9lvb").text
+        else:
+            displayed_link = None
         tracking_link = ad_result.select_one(".v5yQqb a.sVXRqc")["data-rw"]
-        snippet = ad_result.select_one(".MUxGbd div span").text
+        snippet = None if ad_result.select_one(".MUxGbd div").text is None else ad_result.select_one(".MUxGbd div").text
         phone = None if ad_result.select_one("span.fUamLb span") is None else ad_result.select_one(
             "span.fUamLb span").text
 
@@ -92,7 +96,8 @@ def scrap_ads_get(keyword='buy'):
             "sitelinks_link_2": inline_link[1],
             "sitelinks_link_3": inline_link[2],
             "sitelinks_link_4": inline_link[3],
-            "location": None
+            #enter your current location here
+            "location": "Australia, Sydney"
         })
     if ad_results == []:
         print('There are no ads for this search phrase')
@@ -256,6 +261,28 @@ def show_unique_description():
     return rec.fetchall()
 
 
+# def normilize_description():
+#     """
+#     парсит из текста список слов в 0 форме (им пажед, инфинитив)
+#     """
+#     sud = ' '.join(show_unique_description())
+#     # создает компилятор
+#     reg_expr_compiled = re.compile('\w+')
+#     # занижает введенную строку
+#     raw_text_lower = sud.lower()
+#     # формирует из сниженной исходной строки лист из слов
+#     text_by_words = reg_expr_compiled.findall(raw_text_lower)
+#     # этот класс нужен для приведения формы слова
+#     morph = pymorphy2.MorphAnalyzer()
+#     normalized_corpus = []
+#     for word in text_by_words:
+#         parsed_token = morph.parse(word)
+#         normal_form = parsed_token[0].normal_form
+#         if (not normal_form in STOP_WORDS) and (normal_form.isalpha()):
+#             normalized_corpus.append(normal_form)
+#     return normalized_corpus
+
+
 def results_to_csv():
     '''
     It creates "output.csv" to show your current database table (just for a testing)
@@ -264,7 +291,7 @@ def results_to_csv():
     con = sqlite3.connect("database_results.db", isolation_level=None,
                           detect_types=sqlite3.PARSE_COLNAMES)
     db_df = pd.read_sql_query('SELECT DISTINCT * FROM google_ads_scrap', con)
-    db_df.to_csv('output.csv', index=False)
+    db_df.to_csv('output.csv', sep=';', index=False)
 
 
 def scrap_titles():
